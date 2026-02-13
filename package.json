@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://roshanbenji.github.io/church-isbn-scanner",
+  "homepage": "https://roshanbenji.github.io/barcode-read",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -13,11 +13,11 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@ericblade/quagga2": "^1.12.1",
     "axios": "^1.13.5",
     "clsx": "^2.1.1",
     "dexie": "^4.3.0",
     "dexie-react-hooks": "^4.2.0",
-    "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

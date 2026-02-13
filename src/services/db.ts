@@ -26,3 +26,7 @@ export const getBooks = async () => {
 export const deleteBook = async (id: number) => {
     return await db.books.delete(id);
 };
+
+export const clearAllBooks = async () => {
+    return await db.books.clear();
+};

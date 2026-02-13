@@ -13,22 +13,44 @@ const Scan = () => {
     const [showModal, setShowModal] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
+    const [error, setError] = useState<string | null>(null);
+    const [lastScanned, setLastScanned] = useState<string>("");
+
     const handleScan = async (isbn: string) => {
         setIsScanning(false);
         setIsLoading(true);
         setShowModal(true);
+        setError(null);
+        setLastScanned(isbn);
 
         // Clean up ISBN (remove dashes if any)
         const cleanIsbn = isbn.replace(/-/g, '');
 
-        const book = await fetchBookByISBN(cleanIsbn);
-        setIsLoading(false);
+        // Basic ISBN validation
+        // ISBN-13 starts with 978 or 979 and is 13 digits
+        // ISBN-10 is 10 chars (last can be X)
+        const isISBN13 = /^(978|979)\d{10}$/.test(cleanIsbn);
+        const isISBN10 = /^\d{9}[\d|X]$/.test(cleanIsbn);
 
-        if (book) {
-            setScannedBook(book);
-        } else {
-            // Handle not found case or error
-            setScannedBook({ isbn: cleanIsbn, title: 'Unknown Book', authors: [] });
+        if (!isISBN13 && !isISBN10) {
+            console.log("Ignored invalid ISBN:", cleanIsbn);
+            setIsScanning(true);
+            setIsLoading(false);
+            setShowModal(false);
+            return;
+        }
+
+        try {
+            const book = await fetchBookByISBN(cleanIsbn);
+            setIsLoading(false);
+            setScannedBook(book); // Now guaranteed to be a book or throw
+        } catch (err: any) {
+            console.error("Scan Error:", err);
+            setIsLoading(false);
+            setShowModal(false);
+            setIsScanning(true);
+            setError(err.message || "Failed to fetch book");
+            alert(`Error: ${err.message}`);
         }
     };
 
@@ -51,6 +73,7 @@ const Scan = () => {
         setShowModal(false);
         setScannedBook(null);
         setIsScanning(true);
+        setError(null);
     };
 
     const handleCloseScanner = () => {
@@ -58,7 +81,7 @@ const Scan = () => {
     };
 
     return (
-        <div className="h-full">
+        <div className="h-full relative">
             {isScanning && (
                 <Scanner
                     onScanSuccess={handleScan}
@@ -73,6 +96,24 @@ const Scan = () => {
                 onCancel={handleCancel}
                 isLoading={isLoading}
             />
+
+            {/* Debug Overlay */}
+            {!isScanning && error && (
+                <div className="fixed bottom-4 left-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50">
+                    <strong className="font-bold">Error: </strong>
+                    <span className="block sm:inline">{error}</span>
+                    <div className="mt-2 text-xs text-gray-600">
+                        <p>Last Scanned: {lastScanned}</p>
+                        <p>API Key Present: {import.meta.env.VITE_GOOGLE_BOOKS_API_KEY ? 'Yes' : 'No'}</p>
+                    </div>
+                    <button
+                        onClick={() => { setError(null); setIsScanning(true); }}
+                        className="mt-2 bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

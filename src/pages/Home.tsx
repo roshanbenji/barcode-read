@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBooks, deleteBook } from '../services/db';
+import { getBooks, deleteBook, clearAllBooks } from '../services/db';
 // import type { Book } from '../types';
-import { Plus, Download, Trash2, Search, Book as BookIcon } from 'lucide-react';
+import { Plus, Download, Trash2, Search, Book as BookIcon, Settings, Trash } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import SettingsModal from '../components/SettingsModal';
 
 const Home = () => {
     const navigate = useNavigate();
     // useLiveQuery automatically updates when DB changes
     const books = useLiveQuery(() => getBooks()) || [];
     const [searchTerm, setSearchTerm] = useState('');
+    const [showSettings, setShowSettings] = useState(false);
 
     const filteredBooks = books.filter(book =>
         book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -51,6 +53,12 @@ const Home = () => {
         }
     };
 
+    const handleClearAll = async () => {
+        if (books.length > 0 && confirm('Are you sure you want to delete ALL books? This action cannot be undone.')) {
+            await clearAllBooks();
+        }
+    };
+
     return (
         <div className="pb-20">
             {/* Action Bar */}
@@ -65,14 +73,31 @@ const Home = () => {
                         className="w-full pl-10 pr-4 py-3 rounded-xl border-none shadow-sm ring-1 ring-gray-200 focus:ring-2 focus:ring-indigo-500 bg-white"
                     />
                 </div>
-                <button
-                    onClick={handleExport}
-                    disabled={books.length === 0}
-                    className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-indigo-600 font-medium rounded-xl shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                    <Download size={20} />
-                    Export CSV
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setShowSettings(true)}
+                        className="flex items-center justify-center p-3 bg-white text-gray-600 rounded-xl shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 hover:text-indigo-600 transition-all"
+                        title="Scanner Settings"
+                    >
+                        <Settings size={20} />
+                    </button>
+                    <button
+                        onClick={handleClearAll}
+                        disabled={books.length === 0}
+                        className="flex items-center justify-center p-3 bg-white text-red-500 rounded-xl shadow-sm ring-1 ring-gray-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        title="Clear Library"
+                    >
+                        <Trash size={20} />
+                    </button>
+                    <button
+                        onClick={handleExport}
+                        disabled={books.length === 0}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-indigo-600 font-medium rounded-xl shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                        <Download size={20} />
+                        Export CSV
+                    </button>
+                </div>
             </div>
 
             {/* Book List */}
@@ -116,7 +141,7 @@ const Home = () => {
                             </div>
                             <button
                                 onClick={() => handleDelete(book.id)}
-                                className="self-start p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100 sm:opacity-100"
+                                className="self-start p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                             >
                                 <Trash2 size={20} />
                             </button>
@@ -128,10 +153,15 @@ const Home = () => {
             {/* FAB */}
             <button
                 onClick={() => navigate('/scan')}
-                className="fixed bottom-6 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-300 flex items-center justify-center hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all z-40"
+                className="fixed bottom-6 right-6 w-16 h-16 bg-black text-white rounded-full shadow-lg shadow-indigo-300 flex items-center justify-center hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all z-40"
             >
                 <Plus size={32} strokeWidth={2.5} />
             </button>
+
+            <SettingsModal
+                isOpen={showSettings}
+                onClose={() => setShowSettings(false)}
+            />
         </div>
     );
 };

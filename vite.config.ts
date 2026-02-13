@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/church-isbn-scanner/',
+  base: '/barcode-read/',
   plugins: [
     react(),
     tailwindcss(),
