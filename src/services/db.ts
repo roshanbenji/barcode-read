@@ -19,6 +19,10 @@ export const addBook = async (book: Omit<Book, 'id' | 'dateAdded'>) => {
     });
 };
 
+export const updateBook = async (book: Book) => {
+    return await db.books.put(book);
+};
+
 export const getBooks = async () => {
     return await db.books.orderBy('dateAdded').reverse().toArray();
 };

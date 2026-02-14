@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBooks, deleteBook, clearAllBooks } from '../services/db';
-// import type { Book } from '../types';
-import { Plus, Download, Trash2, Search, Book as BookIcon, Settings, Trash } from 'lucide-react';
+import { getBooks, deleteBook, updateBook, clearAllBooks } from '../services/db';
+import type { Book } from '../types';
+import { Plus, Download, Trash2, Search, Book as BookIcon, Settings, Trash, Pencil } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import SettingsModal from '../components/SettingsModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const Home = () => {
     const navigate = useNavigate();
@@ -12,6 +13,7 @@ const Home = () => {
     const books = useLiveQuery(() => getBooks()) || [];
     const [searchTerm, setSearchTerm] = useState('');
     const [showSettings, setShowSettings] = useState(false);
+    const [editingBook, setEditingBook] = useState<Partial<Book> | null>(null);
 
     const filteredBooks = books.filter(book =>
         book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -22,7 +24,7 @@ const Home = () => {
     const handleExport = () => {
         if (books.length === 0) return;
 
-        const headers = ['ISBN', 'Title', 'Authors', 'Description', 'Page Count', 'Published Date', 'Date Added'];
+        const headers = ['ISBN', 'Title', 'Authors', 'Description', 'Image URL'];
         const csvContent = [
             headers.join(','),
             ...books.map(book => [
@@ -30,9 +32,7 @@ const Home = () => {
                 `"${book.title.replace(/"/g, '""')}"`,
                 `"${book.authors.join('; ')}"`,
                 `"${(book.description || '').replace(/"/g, '""')}"`,
-                book.pageCount,
-                book.publishedDate,
-                book.dateAdded
+                `"${book.thumbnail || ''}"`
             ].join(','))
         ].join('\n');
 
@@ -56,6 +56,22 @@ const Home = () => {
     const handleClearAll = async () => {
         if (books.length > 0 && confirm('Are you sure you want to delete ALL books? This action cannot be undone.')) {
             await clearAllBooks();
+        }
+    };
+
+    const handleEdit = (book: Book) => {
+        setEditingBook(book);
+    };
+
+    const handleSaveEdit = async (editedBook: Partial<Book>) => {
+        if (editingBook && editingBook.id && editedBook) {
+            await updateBook({
+                ...editingBook,
+                ...editedBook,
+                id: editingBook.id, // Ensure ID is preserved
+                dateAdded: editingBook.dateAdded || new Date().toISOString() // Preserve or set date
+            } as Book);
+            setEditingBook(null);
         }
     };
 
@@ -134,17 +150,24 @@ const Home = () => {
                                     <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md font-mono">
                                         {book.isbn}
                                     </span>
-                                    <span className="text-xs text-gray-400">
-                                        {new Date(book.dateAdded).toLocaleDateString()}
-                                    </span>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => handleDelete(book.id)}
-                                className="self-start p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                            >
-                                <Trash2 size={20} />
-                            </button>
+                            <div className="flex flex-col gap-2">
+                                <button
+                                    onClick={() => handleEdit(book)}
+                                    className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-full transition-colors"
+                                    title="Edit Book"
+                                >
+                                    <Pencil size={20} />
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(book.id)}
+                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                    title="Delete Book"
+                                >
+                                    <Trash2 size={20} />
+                                </button>
+                            </div>
                         </div>
                     ))
                 )}
@@ -161,6 +184,13 @@ const Home = () => {
             <SettingsModal
                 isOpen={showSettings}
                 onClose={() => setShowSettings(false)}
+            />
+
+            <ConfirmationModal
+                isOpen={!!editingBook}
+                book={editingBook}
+                onConfirm={handleSaveEdit}
+                onCancel={() => setEditingBook(null)}
             />
         </div>
     );
