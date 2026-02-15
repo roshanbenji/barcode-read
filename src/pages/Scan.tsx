@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import Scanner from '../components/Scanner';
 import ConfirmationModal from '../components/ConfirmationModal';
+import ManualEntryModal from '../components/ManualEntryModal';
 import { fetchBookByISBN } from '../services/booksApi';
 import { addBook } from '../services/db';
 import type { Book } from '../types';
@@ -14,6 +15,8 @@ const Scan = () => {
     const [showModal, setShowModal] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [showManualEntry, setShowManualEntry] = useState(false);
+    const [isManualSearching, setIsManualSearching] = useState(false);
 
     const handleScan = async (isbn: string) => {
         setIsScanning(false);
@@ -52,16 +55,57 @@ const Scan = () => {
         }
     };
 
+    const handleManualSearch = async (isbn: string) => {
+        setIsManualSearching(true);
+        try {
+            const book = await fetchBookByISBN(isbn);
+            setIsManualSearching(false);
+            setShowManualEntry(false);
+            setIsScanning(false);
+            setScannedBook(book);
+            setShowModal(true);
+        } catch (err: any) {
+            console.error("Manual Search Error:", err);
+            setIsManualSearching(false);
+            // If search fails, open the form with just the ISBN pre-filled
+            setShowManualEntry(false);
+            setIsScanning(false);
+            setScannedBook({
+                isbn,
+                title: '',
+                authors: [],
+                description: '',
+                thumbnail: '',
+            });
+            setShowModal(true);
+        }
+    };
+
+    const handleManualInput = () => {
+        setShowManualEntry(false);
+        setIsScanning(false);
+        setScannedBook({
+            isbn: '',
+            title: '',
+            authors: [],
+            description: '',
+            thumbnail: '',
+        });
+        setShowModal(true);
+    };
+
     const handleConfirm = async (editedBook: Partial<Book>) => {
-        if (editedBook && editedBook.isbn) {
+        if (editedBook) {
             await addBook({
-                isbn: editedBook.isbn,
+                isbn: editedBook.isbn || '',
                 title: editedBook.title || 'Unknown Title',
                 authors: editedBook.authors || [],
                 description: editedBook.description,
                 thumbnail: editedBook.thumbnail,
                 pageCount: editedBook.pageCount,
                 publishedDate: editedBook.publishedDate,
+                category: editedBook.category || 'Others',
+                condition: editedBook.condition || 'Good',
             });
 
             // Continuous scanning logic:
@@ -92,8 +136,17 @@ const Scan = () => {
                 <Scanner
                     onScanSuccess={handleScan}
                     onClose={handleCloseScanner}
+                    onManualEntry={() => setShowManualEntry(true)}
                 />
             )}
+
+            <ManualEntryModal
+                isOpen={showManualEntry}
+                onClose={() => setShowManualEntry(false)}
+                onSearch={handleManualSearch}
+                onManualInput={handleManualInput}
+                isSearching={isManualSearching}
+            />
 
             <ConfirmationModal
                 isOpen={showModal}

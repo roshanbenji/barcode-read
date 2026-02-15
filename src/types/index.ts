@@ -8,6 +8,8 @@ export interface Book {
     pageCount?: number;
     publishedDate?: string;
     dateAdded: string;
+    category?: 'Theology' | 'Christian Living' | 'Biography' | 'Devotional' | 'Fiction' | 'Others';
+    condition?: 'New' | 'Good' | 'Worn';
 }
 
 export interface GoogleBookVolumeInfo {

@@ -6,9 +6,10 @@ import NativeScanner from './NativeScanner';
 interface ScannerProps {
     onScanSuccess: (decodedText: string) => void;
     onClose: () => void;
+    onManualEntry?: () => void;
 }
 
-const Scanner = ({ onScanSuccess, onClose }: ScannerProps) => {
+const Scanner = ({ onScanSuccess, onClose, onManualEntry }: ScannerProps) => {
     const { scannerType } = useScanner();
 
     return (
@@ -41,6 +42,19 @@ const Scanner = ({ onScanSuccess, onClose }: ScannerProps) => {
                 <p className="text-gray-400 text-center mt-1 text-xs">
                     Point your camera at the ISBN barcode.
                 </p>
+
+                {onManualEntry && (
+                    <button
+                        onClick={onManualEntry}
+                        className="mt-5 bg-white/15 backdrop-blur-sm text-white px-5 py-3 rounded-full font-medium text-sm flex items-center gap-2 hover:bg-white/25 transition-all active:scale-95 border border-white/20"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="2" y="4" width="20" height="16" rx="2" />
+                            <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M6 16h12" />
+                        </svg>
+                        Enter ISBN / Add Manually
+                    </button>
+                )}
             </div>
         </div>
     );

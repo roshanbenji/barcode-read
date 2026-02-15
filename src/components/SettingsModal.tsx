@@ -7,6 +7,31 @@ interface SettingsModalProps {
     onClose: () => void;
 }
 
+const DebugCheckbox = () => {
+    const [enabled, setEnabled] = React.useState(() => localStorage.getItem('debug_mode') === 'true');
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const isChecked = e.target.checked;
+        setEnabled(isChecked);
+        localStorage.setItem('debug_mode', isChecked.toString());
+    };
+
+    return (
+        <>
+            <input
+                type="checkbox"
+                className="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300 transition duration-150 ease-in-out"
+                checked={enabled}
+                onChange={handleChange}
+            />
+            <div>
+                <span className="text-sm font-medium text-gray-700">Enable Camera Debugging</span>
+                <p className="text-xs text-gray-400">Show resolution, errors, and restart button.</p>
+            </div>
+        </>
+    );
+};
+
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     const {
         scannerType,
@@ -68,9 +93,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                             ? 'Browser Built-in (Faster, Experimental)'
                                             : 'Not supported on this device'}
                                     </div>
+
                                 </div>
-                                {scannerType === 'native' && <Check size={18} />}
                             </button>
+                        </div>
+
+                        {/* Debug Toggle */}
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                            <label className="flex items-center space-x-3 cursor-pointer">
+                                <DebugCheckbox />
+                            </label>
+                        </div>
+
+                        {/* Force Restart Action */}
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                            <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Troubleshooting</h3>
+                            <button
+                                onClick={() => {
+                                    window.location.reload();
+                                }}
+                                className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-50 text-red-600 font-medium hover:bg-red-100 transition-colors"
+                            >
+                                <span className="uppercase text-xs font-bold tracking-wider">Reload App & Camera</span>
+                            </button>
+                            <p className="text-xs text-gray-400 mt-1 text-center">
+                                Use this if the camera screen is black or stuck.
+                            </p>
                         </div>
                     </div>
 

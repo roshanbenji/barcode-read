@@ -24,13 +24,16 @@ const Home = () => {
     const handleExport = () => {
         if (books.length === 0) return;
 
-        const headers = ['ISBN', 'Title', 'Authors', 'Description', 'Image URL'];
+        const headers = ['ISBN', 'Title', 'Authors', 'Category', 'Condition', 'Date Added', 'Description', 'Image URL'];
         const csvContent = [
             headers.join(','),
             ...books.map(book => [
                 `"${book.isbn}"`,
                 `"${book.title.replace(/"/g, '""')}"`,
                 `"${book.authors.join('; ')}"`,
+                `"${book.category || 'Others'}"`,
+                `"${book.condition || 'Good'}"`,
+                `"${new Date(book.dateAdded).toLocaleDateString()}"`,
                 `"${(book.description || '').replace(/"/g, '""')}"`,
                 `"${book.thumbnail || ''}"`
             ].join(','))
@@ -148,7 +151,7 @@ const Home = () => {
                                 <p className="text-gray-600 text-sm mb-2">{book.authors.join(', ')}</p>
                                 <div className="flex items-center gap-2 mt-auto">
                                     <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md font-mono">
-                                        {book.isbn}
+                                        {book.isbn || 'No ISBN'}
                                     </span>
                                 </div>
                             </div>

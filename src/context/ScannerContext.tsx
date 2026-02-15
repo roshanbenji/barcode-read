@@ -50,14 +50,19 @@ export const ScannerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     useEffect(() => {
         // Enumerate cameras
         const getCameras = async () => {
+            let tempStream: MediaStream | null = null;
             try {
                 // Request permission first to get labels
-                await navigator.mediaDevices.getUserMedia({ video: true });
+                tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const cameras = devices.filter(d => d.kind === 'videoinput');
                 setAvailableCameras(cameras);
             } catch (e) {
                 console.warn("Error enumerating devices:", e);
+            } finally {
+                if (tempStream) {
+                    tempStream.getTracks().forEach(track => track.stop());
+                }
             }
         };
         getCameras();

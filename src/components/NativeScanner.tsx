@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { useScanner } from '../context/ScannerContext';
+import ScannerDebug from './ScannerDebug';
 
 interface NativeScannerProps {
     onDetected: (code: string) => void;
@@ -9,9 +10,28 @@ interface NativeScannerProps {
 const NativeScanner: React.FC<NativeScannerProps> = ({ onDetected }) => {
     const { cameraDeviceId } = useScanner();
     const videoRef = useRef<HTMLVideoElement>(null);
+    const [showDebug, setShowDebug] = useState(() => localStorage.getItem('debug_mode') === 'true');
+    const [errorLog, setErrorLog] = useState<string[]>([]);
+    const [restartTrigger, setRestartTrigger] = useState(0);
+
+    // Restored hooks
     const [error, setError] = useState<string | null>(null);
     const [stream, setStream] = useState<MediaStream | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    useEffect(() => {
+        // Poll for debug mode changes (hacky but simple for now without context update)
+        const checkDebug = () => {
+            const enabled = localStorage.getItem('debug_mode') === 'true';
+            if (enabled !== showDebug) setShowDebug(enabled);
+        };
+        const interval = setInterval(checkDebug, 1000);
+        return () => clearInterval(interval);
+    }, [showDebug]);
+
+    const logError = (msg: string) => {
+        setErrorLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()} - ${msg}`]);
+    };
 
     useEffect(() => {
         let active = true;
@@ -20,8 +40,12 @@ const NativeScanner: React.FC<NativeScannerProps> = ({ onDetected }) => {
         let animationFrameId: number;
 
         const startScanner = async () => {
+            setError(null); // Clear fatal error state on restart
+
             if (!('BarcodeDetector' in window)) {
-                setError("Native Barcode Detector is not supported in this browser.");
+                const msg = "Native Barcode Detector is not supported in this browser.";
+                setError(msg);
+                logError(msg);
                 return;
             }
 
@@ -33,7 +57,9 @@ const NativeScanner: React.FC<NativeScannerProps> = ({ onDetected }) => {
                 const formatsToUse = supportedFormats.filter((f: string) => f === 'ean_13' || f === 'ean_8');
 
                 if (formatsToUse.length === 0) {
-                    setError("This device does not support EAN-13 barcode detection natively.");
+                    const msg = "This device does not support EAN-13 barcode detection natively.";
+                    setError(msg);
+                    logError(msg);
                     return;
                 }
 
@@ -75,6 +101,7 @@ const NativeScanner: React.FC<NativeScannerProps> = ({ onDetected }) => {
                             await track.applyConstraints(advancedConstraints);
                         } catch (e) {
                             console.warn("Failed to apply advanced camera constraints", e);
+                            logError("Failed to apply advanced constraints");
                         }
                     }
                 }
@@ -83,7 +110,10 @@ const NativeScanner: React.FC<NativeScannerProps> = ({ onDetected }) => {
                     setStream(mediaStream);
                     if (videoRef.current) {
                         videoRef.current.srcObject = mediaStream;
-                        videoRef.current.play().catch(e => console.error("Video play failed", e));
+                        videoRef.current.play().catch(e => {
+                            console.error("Video play failed", e);
+                            logError(`Video play failed: ${e.message}`);
+                        });
                     }
                 } else {
                     mediaStream.getTracks().forEach(track => track.stop());
@@ -200,7 +230,20 @@ const NativeScanner: React.FC<NativeScannerProps> = ({ onDetected }) => {
 
             } catch (err: any) {
                 console.error("Native scanner init failed", err);
-                if (active) setError(err.message || "Failed to start camera");
+                const errorMsg = err.message || "Failed to start camera";
+
+                // Auto-retry for "Source Unavailable" or "NotReadableError" (Device busy)
+                if ((err.name === 'NotReadableError' || err.name === 'TrackStartError') && restartTrigger < 3) {
+                    console.log(`Camera busy, retrying... (${restartTrigger + 1}/3)`);
+                    logError(`Camera busy, retrying...`);
+                    setTimeout(() => setRestartTrigger(prev => prev + 1), 1000);
+                    return;
+                }
+
+                if (active) {
+                    setError(errorMsg);
+                    logError(`Init failed: ${errorMsg}`);
+                }
             }
         };
 
@@ -212,23 +255,34 @@ const NativeScanner: React.FC<NativeScannerProps> = ({ onDetected }) => {
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
             }
+            if (videoRef.current) {
+                videoRef.current.srcObject = null;
+            }
         };
-    }, [cameraDeviceId]); // Restart when camera changes
-
-    if (error) {
-        return (
-            <div className="flex items-center justify-center h-full bg-black text-white p-4 text-center">
-                <div className="max-w-xs">
-                    <p className="text-red-400 font-medium mb-2">Scanner Error</p>
-                    <p className="text-sm text-gray-300">{error}</p>
-                    <p className="text-xs text-gray-500 mt-4">Try switching back to Standard Scanner in settings.</p>
-                </div>
-            </div>
-        );
-    }
+    }, [cameraDeviceId, restartTrigger]); // Restart when camera changes
 
     return (
         <div className="w-full h-full relative overflow-hidden bg-black">
+            {error && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-30 text-white p-4 text-center">
+                    <div className="max-w-xs">
+                        <p className="text-red-400 font-medium mb-2">Scanner Error</p>
+                        {!showDebug && (
+                            <>
+                                <p className="text-sm text-gray-300">{error}</p>
+                                <button
+                                    onClick={() => setRestartTrigger(prev => prev + 1)}
+                                    className="mt-4 px-4 py-2 bg-indigo-600 rounded text-sm font-medium hover:bg-indigo-700 transition-colors"
+                                >
+                                    Retry Camera
+                                </button>
+                            </>
+                        )}
+                        {showDebug && <p className="text-xs text-gray-500 mt-2">Check debug log below...</p>}
+                    </div>
+                </div>
+            )}
+
             <video
                 ref={videoRef}
                 className="w-full h-full object-cover relative z-10"
@@ -240,7 +294,13 @@ const NativeScanner: React.FC<NativeScannerProps> = ({ onDetected }) => {
                 className="absolute inset-0 w-full h-full z-20 pointer-events-none"
             />
 
-            {/* <canvas> overlay is here, but text overlay is removed */}
+            {showDebug && (
+                <ScannerDebug
+                    stream={stream}
+                    errorLog={errorLog}
+                    onRestart={() => setRestartTrigger(prev => prev + 1)}
+                />
+            )}
         </div>
     );
 };
