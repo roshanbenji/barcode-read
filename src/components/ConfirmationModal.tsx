@@ -1,8 +1,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { Book } from '../types';
-import { X, BookOpen, Link as LinkIcon, Save, Camera } from 'lucide-react';
+import { X, BookOpen, Link as LinkIcon, Save, Camera, Search } from 'lucide-react';
 import { uploadImageToImgBB } from '../services/imageUpload';
+import { fetchBookByISBN } from '../services/booksApi';
 
 interface ConfirmationModalProps {
     book: Partial<Book> | null;
@@ -15,7 +16,32 @@ interface ConfirmationModalProps {
 const ConfirmationModal = ({ book, isOpen, onConfirm, onCancel, isLoading }: ConfirmationModalProps) => {
     const [editedBook, setEditedBook] = useState<Partial<Book>>({});
     const [isUploading, setIsUploading] = useState(false);
+    const [isLookingUp, setIsLookingUp] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleIsbnLookup = async () => {
+        const isbn = editedBook.isbn?.replace(/[-\s]/g, '') || '';
+        if (isbn.length < 10) return;
+        setIsLookingUp(true);
+        try {
+            const result = await fetchBookByISBN(isbn);
+            if (result) {
+                setEditedBook(prev => ({
+                    ...prev,
+                    title: result.title || prev.title,
+                    authors: result.authors?.length ? result.authors : prev.authors,
+                    description: result.description || prev.description,
+                    thumbnail: result.thumbnail || prev.thumbnail,
+                    pageCount: result.pageCount || prev.pageCount,
+                    publishedDate: result.publishedDate || prev.publishedDate,
+                }));
+            }
+        } catch (err) {
+            console.error('ISBN lookup failed:', err);
+        } finally {
+            setIsLookingUp(false);
+        }
+    };
 
     // Reset edited book when a new book is scanned
     useEffect(() => {
@@ -121,7 +147,7 @@ const ConfirmationModal = ({ book, isOpen, onConfirm, onCancel, isLoading }: Con
                                         <input
                                             type="text"
                                             value={editedBook.authors?.join(', ') || ''}
-                                            onChange={(e) => setEditedBook({ ...editedBook, authors: e.target.value.split(',').map(s => s.trim()) })}
+                                            onChange={(e) => setEditedBook({ ...editedBook, authors: e.target.value.split(',') })}
                                             className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                                             placeholder="Author 1, Author 2"
                                         />
@@ -139,9 +165,23 @@ const ConfirmationModal = ({ book, isOpen, onConfirm, onCancel, isLoading }: Con
                                     >
                                         <option value="Theology">Theology</option>
                                         <option value="Christian Living">Christian Living</option>
+                                        <option value="Bibles">Bibles</option>
                                         <option value="Biography">Biography</option>
                                         <option value="Devotional">Devotional</option>
+                                        <option value="Inspirational">Inspirational</option>
                                         <option value="Fiction">Fiction</option>
+                                        <option value="Non Fiction">Non Fiction</option>
+                                        <option value="Business">Business</option>
+                                        <option value="Marriage">Marriage</option>
+                                        <option value="Parenting">Parenting</option>
+                                        <option value="Poetry">Poetry</option>
+                                        <option value="Toddlers">Toddlers</option>
+                                        <option value="Kids">Kids</option>
+                                        <option value="Teens">Teens</option>
+                                        <option value="Comics">Comics</option>
+                                        <option value="Commentaries">Commentaries</option>
+                                        <option value="History">History</option>
+                                        <option value="Science and Technology">Science and Technology</option>
                                         <option value="Others">Others</option>
                                     </select>
                                 </div>
@@ -201,9 +241,22 @@ const ConfirmationModal = ({ book, isOpen, onConfirm, onCancel, isLoading }: Con
                                     inputMode="numeric"
                                     value={editedBook.isbn || ''}
                                     onChange={(e) => setEditedBook({ ...editedBook, isbn: e.target.value })}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleIsbnLookup(); }}
                                     className="flex-1 text-sm font-mono text-gray-700 bg-transparent border-none outline-none p-0"
                                     placeholder="No ISBN (optional)"
                                 />
+                                <button
+                                    onClick={handleIsbnLookup}
+                                    disabled={isLookingUp || !editedBook.isbn || editedBook.isbn.replace(/[-\s]/g, '').length < 10}
+                                    className="p-1 text-indigo-600 hover:text-indigo-700 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+                                    title="Look up book details"
+                                >
+                                    {isLookingUp ? (
+                                        <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        <Search size={16} />
+                                    )}
+                                </button>
                             </div>
                         </div>
                     ) : (

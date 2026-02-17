@@ -8,7 +8,7 @@ export interface Book {
     pageCount?: number;
     publishedDate?: string;
     dateAdded: string;
-    category?: 'Theology' | 'Christian Living' | 'Biography' | 'Devotional' | 'Fiction' | 'Others';
+    category?: 'Theology' | 'Christian Living' | 'Biography' | 'Devotional' | 'Fiction' | 'Non Fiction' | 'Business' | 'Marriage' | 'Parenting' | 'Poetry' | 'Bibles' | 'Inspirational' | 'Toddlers' | 'Kids' | 'Teens' | 'Comics' | 'Commentaries' | 'History' | 'Science and Technology' | 'Others';
     condition?: 'New' | 'Good' | 'Worn';
 }
 
